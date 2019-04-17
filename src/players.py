@@ -27,6 +27,7 @@ class Player(object):
                                    html=self.raw_data)[0][0]
 
     def get_info(self):
+        seen_key = 0
         info = self.go_deeper_html(lkey=[{"html": "div", "class": "center", "n_items": 1}, {"html": 'article'},
                                          {"html": "div", "class": "info"}],
                                    html=self.raw_data)[0][0][0]
@@ -50,6 +51,9 @@ class Player(object):
                                            html=self.raw_data)[0][0][0]
         g_card_stats_soup = BeautifulSoup(g_card_stats, features="html.parser")
         for k, spn in zip(["overall_rating", "potential", "value", "wage"], g_card_stats_soup.find_all('span')):
+            if k in res:
+                k = "%s_%d" % (k, seen_key)
+                seen_key += 1
             res[k] = spn.text
 
         teams = self.go_deeper_html(lkey=[{"html": "div", "class": "center", "n_items": 1}, {"html": 'article'},
@@ -66,21 +70,29 @@ class Player(object):
             else:
 
                 label_soup = BeautifulSoup(str(label[0]), features="html.parser")
-                res[label_soup.text] = li.text.replace(label_soup.text, "").strip()
-        res['skills'] = [t.text for t in teams_soup.find_all('a', {"class":"label"})]
+                key = label_soup.text
+                if key in res:
+                    key = "%s_%d" % (key, seen_key)
+                    seen_key += 1
+                res[key] = li.text.replace(label_soup.text, "").strip()
+        res['skills'] = [t.text for t in teams_soup.find_all('a', {"class": "label"})]
         mt_2mb_2 = self.go_deeper_html(lkey=[{"html": "div", "class": "center", "n_items": 1}, {"html": 'article'},
-                                          {"html": "div", "class": "mt-2 mb-2"}],
-                                    html=self.raw_data)[0][0][0]
+                                             {"html": "div", "class": "mt-2 mb-2"}],
+                                       html=self.raw_data)[0][0][0]
 
         mt_2mb_2_soup = BeautifulSoup(mt_2mb_2, features="html.parser")
         for li in mt_2mb_2_soup.find_all("li"):
             span = BeautifulSoup(str(li), features="html.parser").find_all("span")
-            if len(span) ==2:
-                res[span[1].text] = span[0].text
+            if len(span) == 2:
+                key = span[1].text
+                if key in res:
+                    key = "%s_%d" % (key, seen_key)
+                    seen_key += 1
+                res[key] = span[0].text
 
         mb_2 = self.go_deeper_html(lkey=[{"html": "div", "class": "center", "n_items": 2}, {"html": 'article'},
-                                          {"html": "div", "class": "mb-2", "n_items" : 3}],
-                                    html=self.raw_data)[0][0][2]
+                                         {"html": "div", "class": "mb-2", "n_items": 3}],
+                                   html=self.raw_data)[0][0][2]
 
         # print(mb_2)
         mb_2_soup = BeautifulSoup(mb_2, features="html.parser")
@@ -88,7 +100,11 @@ class Player(object):
             span = BeautifulSoup(str(li), features="html.parser").find_all("span")
 
             if len(span) == 2:
-                res[span[1].text] = span[0].text
+                key = span[1].text
+                if key in res:
+                    key = "%s_%d" % (key, seen_key)
+                    seen_key += 1
+                res[key] = span[0].text
             else:
 
                 if "traits" not in res:
@@ -97,12 +113,21 @@ class Player(object):
 
                     res['traits'].append(span[0].text)
                 else:
-                    res[li.text.replace(span[0].text,"").strip()] = span[0].text
+                    key = li.text.replace(span[0].text, "").strip()
+                    if key in res:
+                        key = "%s_%d" % (key, seen_key)
+                        seen_key += 1
+                    res[key] = span[0].text
 
-        print(res["traits"])
+        # unknow field filled
+        res["play_team"] = res["unknow_fields_team_0"]
+        del res['unknow_fields_team_0']
 
+        # TODO : make <aside> available and verify if all keys are unique
+        # TODO : clean field (put right type, parse date to datetime, int, put team link)
+        # TODO :  Do same class with teams
 
-        return res
+        return {k.lower().replace(" ", "_"): res[k] for k in res}
 
     def get_aside(self):
         """
