@@ -127,7 +127,6 @@ class Player(object):
 
         # TODO : make <aside> available and verify if all keys are unique
         # TODO : clean field (put right type, parse date to datetime, int, put team link)
-        # TODO :  Do same class with teams
 
         return {k.lower().replace(" ", "_"): res[k] for k in res}
 
@@ -170,6 +169,8 @@ class Players(object):
             self.players_url = base_sofifa_url + "players?offset=%d"
         self.req = requests.get(self.players_url % 0)
         assert self.req.status_code in [200], "[Html error] code %d" % self.req.status_code
+        assert self.req.url == self.players_url % 0, "[html ERROR] Your player not Found : url %s" % (
+                self.players_url % 0)
         self.raw_data = self.req.text
         self.soup_data = BeautifulSoup(self.raw_data, features="html.parser")
         self.header = self.get_header()
@@ -190,9 +191,10 @@ class Players(object):
         :param offset: into 2019 the max offset are 18077
         :return: players
         """
-        players_url = base_sofifa_url + "players?offset=%d"
-        req = requests.get(players_url % offset)
+        req = requests.get(self.players_url % offset)
         assert req.status_code in [200], "[Html error] code %d" % req.status_code
+        assert self.req.url == self.players_url % offset, "[html ERROR] Your player not Found : url %s" % (
+                self.players_url % offset)
         raw_data = req.text
         soup_data = BeautifulSoup(raw_data, features="html.parser")
         players_offset = soup_data.find('article').find('tbody').find_all("tr")

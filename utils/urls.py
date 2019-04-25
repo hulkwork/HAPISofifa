@@ -5,7 +5,10 @@ import os
 
 
 class VersionNotFound(Exception): pass
+
+
 class DateNotFound(Exception): pass
+
 
 FORMAT_DATE = '%d %b  %Y'
 

@@ -116,7 +116,6 @@ class Team(object):
 
         # TODO : make <aside> available and verify if all keys are unique
         # TODO : clean field (put right type, parse date to datetime, int, put team link)
-        # TODO :  Do same class with teams
 
         return {k.lower().replace(" ", "_"): res[k] for k in res}
 
