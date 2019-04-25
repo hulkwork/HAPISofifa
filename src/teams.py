@@ -6,7 +6,7 @@ import re
 
 
 class Team(object):
-    def __init__(self, team_uri):
+    def __init__(self, team_uri, date=None):
         self.player_url = os.path.join(base_sofifa_url, team_uri)
         self.req = requests.get(self.player_url)
         assert self.req.status_code in [200], "[Html error] code %d" % self.req.status_code

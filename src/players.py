@@ -1,16 +1,18 @@
-from config.conf import base_sofifa_url
+from config.conf import base_sofifa_url, max_player_2019
 from bs4 import BeautifulSoup
 import os
 import requests
 import re
+from utils.urls import reconstruct_url_player
 
 
 class Player(object):
-    def __init__(self, player_uri):
-        self.player_url = os.path.join(base_sofifa_url, player_uri)
+    def __init__(self, player_uri, date=None):
+        self.player_url = reconstruct_url_player(player_uri=player_uri, date=date)
         self.req = requests.get(self.player_url)
         assert self.req.status_code in [200], "[Html error] code %d" % self.req.status_code
         self.raw_data = self.req.text
+        assert self.req.url == self.player_url, "[html ERROR] Your player not Found : url %s" % self.player_url
         self.soup_data = BeautifulSoup(self.raw_data, features="html.parser")
 
     def get_center_class(self):
@@ -154,3 +156,117 @@ class Player(object):
             return [str(s) for s in
                     BeautifulSoup(html, features="html.parser").find_all(name=html_balise, attrs=html_class)[:n_items]]
         return [self.go_deeper_html(lkey[1:], s) for s in self.go_deeper_html([lkey[0]], html)]
+
+
+class Players(object):
+    """
+
+    """
+
+    def __init__(self, date=None):
+        if date:
+            self.players_url = reconstruct_url_player("players/", date=date) + "&offset=%d"
+        else:
+            self.players_url = base_sofifa_url + "players?offset=%d"
+        self.req = requests.get(self.players_url % 0)
+        assert self.req.status_code in [200], "[Html error] code %d" % self.req.status_code
+        self.raw_data = self.req.text
+        self.soup_data = BeautifulSoup(self.raw_data, features="html.parser")
+        self.header = self.get_header()
+
+    def get_header(self):
+        """
+
+        :return:
+        """
+        header = self.soup_data.find('article').find('thead').find("tr", {"class": 'persist-header'}).find_all('th')
+        header = [h.text.strip() for h in header]
+        header[0] = "avatar"
+        return header
+
+    def get_players(self, offset):
+        """
+
+        :param offset: into 2019 the max offset are 18077
+        :return: players
+        """
+        players_url = base_sofifa_url + "players?offset=%d"
+        req = requests.get(players_url % offset)
+        assert req.status_code in [200], "[Html error] code %d" % req.status_code
+        raw_data = req.text
+        soup_data = BeautifulSoup(raw_data, features="html.parser")
+        players_offset = soup_data.find('article').find('tbody').find_all("tr")
+
+        def player_feat(play):
+            res = []
+            player_face = play[0].find('img').get('data-src')
+            res.append(player_face)
+
+            player_name_field = play[1].find_all('a')
+
+            tmp = {'title_nat': player_name_field[0].get('title'),
+                   "href": player_name_field[0].get('href'),
+                   "flag": player_name_field[0].find('img').get('data-src'),
+                   'player_href': player_name_field[1].get('href'),
+                   "player_name": player_name_field[1].get('title')}
+
+            player_name_position = [(a.get('href'), a.text.strip()) for a in
+                                    play[1].find('div', {'class': "text-ellipsis rtl"}).find_all('a')]
+            tmp["position"] = player_name_position
+            res.append(tmp)
+
+            age = play[2].text.strip()
+            res.append(age)
+
+            ova = play[3].text.strip()
+            res.append(ova)
+
+            pot = play[4].text.strip()
+            res.append(pot)
+
+            player_team = play[5]
+            tmp = {"team_flag": player_team.find('img').get('data-src'),
+                   "team_href": player_team.find('a').get("href"),
+                   "team_name": player_team.find('a').text.strip(),
+                   'contract': player_team.find('div', {"class": "subtitle text-ellipsis rtl"}).text.strip()}
+
+            res.append(tmp)
+            res.append('UNKN')
+
+            value = play[6].text.strip()
+            res.append(value)
+            wage = play[7].text.strip()
+            res.append(wage)
+            res.append('UNKN')
+            total_stats = play[8].text.strip()
+            res.append(total_stats)
+            res.append('UNKN')
+            hit_comments = play[9].text.strip()
+            res.append(hit_comments)
+
+            return res
+
+        results = {}
+        for pl in players_offset:
+            pl = player_feat(pl.find_all('td'))
+            tmp = {k: v for k, v in zip(self.header, pl)}
+            results[tmp['Name'].get('player_name')] = tmp
+
+        return results
+
+    def get_all_players(self, verbose=0):
+        result_all = {}
+        number_offset = max_player_2019 // 60
+        for off in range(number_offset):
+            offset = 60 * off
+            res = self.get_players(offset)
+            for k in res:
+                tmp_k = k
+                count = 0
+                while k in result_all:
+                    k = k + " %d" % count
+                result_all[k] = res[tmp_k]
+            if verbose:
+                print("Number of players %d" % len(result_all))
+                print('Offset number %d/%d' % (off, number_offset))
+        return result_all

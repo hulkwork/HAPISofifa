@@ -1,5 +1,6 @@
 from unittest import TestCase
 from src import players as module
+from datetime import datetime
 
 
 # TODO : Put more tests
@@ -21,3 +22,9 @@ class Testplayers(TestCase):
 
     def test_get_info(self):
         print(self.pl.get_info())
+
+    def test_players(self):
+        pls = module.Player(self.uri, date=datetime(2019, 4, 23))
+        actual = pls.player_url
+        expected = "https://sofifa.com/player/236632/david-neres-campos/?v=19&e=159437&set=true"
+        self.assertEqual(actual, expected)
